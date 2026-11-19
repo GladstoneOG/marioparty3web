@@ -1,0 +1,18 @@
+{
+  "mupen64plus_next": {
+    "core": "mupen64plus_next",
+    "js": "cores/mupen64plus_next_libretro.js",
+    "wasmBin": "cores/mupen64plus_next_libretro.wasm.bin",
+    "rawSize": 6527541,
+    "gzSize": 1907166,
+    "rawCrc32": "a20734b3"
+  },
+  "parallel_n64": {
+    "core": "parallel_n64",
+    "js": "cores/parallel_n64_libretro.js",
+    "wasmBin": "cores/parallel_n64_libretro.wasm.bin",
+    "rawSize": 4462018,
+    "gzSize": 1329540,
+    "rawCrc32": "0dce15be"
+  }
+}

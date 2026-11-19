@@ -1,0 +1,24 @@
+{
+  "id": "mp3-usa",
+  "title": "Mario Party 3 (USA)",
+  "filename": "mp3.z64",
+  "gameCode": "NMVE",
+  "rawSize": 33554432,
+  "rawCrc32": "b7445ddc",
+  "rawSha256": "a08cbd6a4f40d15cbd8bcdee644f80cdfb843e06d569d1334bcd49f23262855a",
+  "compressed": "gzip",
+  "compressedSize": 25498801,
+  "compressedCrc32": "07cd0da4",
+  "chunks": [
+    {
+      "url": "roms/chunks/mp3.z64.gz.part00",
+      "size": 16777216,
+      "crc32": "bb3470ca"
+    },
+    {
+      "url": "roms/chunks/mp3.z64.gz.part01",
+      "size": 8721585,
+      "crc32": "822de096"
+    }
+  ]
+}

@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mario Party 3 Web — 4P Online N64</title>
+  <style>
+    :root {
+      --bg: #090b12;
+      --surface: rgba(16, 20, 32, 0.92);
+      --border: rgba(255, 255, 255, 0.12);
+      --text: #eef2ff;
+      --muted: #94a3b8;
+      --accent: #facc15;
+      --accent-2: #38bdf8;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --red: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* Minimalist 42px Top Bar */
+    #topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 42px;
+      background: rgba(11, 14, 24, 0.94);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      gap: 10px;
+      z-index: 30;
+      backdrop-filter: blur(8px);
+      transition: transform 0.18s ease;
+    }
+    body.bar-hidden #topbar {
+      transform: translateY(-44px);
+    }
+
+    .bar-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .brand {
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .brand span {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 11px;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .btn:hover { background: rgba(255, 255, 255, 0.14); border-color: rgba(255, 255, 255, 0.25); }
+    .btn.primary { background: rgba(250, 204, 21, 0.18); border-color: rgba(250, 204, 21, 0.5); color: #fef08a; }
+    .btn.primary:hover { background: rgba(250, 204, 21, 0.28); }
+    .btn.warn { background: rgba(239, 68, 68, 0.22); border-color: rgba(239, 68, 68, 0.6); color: #fecaca; animation: pulse 1.2s infinite; }
+    .btn.hidden { display: none; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.65; }
+    }
+
+    /* Slot status pills */
+    #slot-strip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .slot-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+    }
+    .slot-pill.me { border-color: var(--accent); color: var(--accent); }
+    .slot-pill.p2p { border-color: rgba(34, 197, 94, 0.5); color: #86efac; background: rgba(34, 197, 94, 0.12); }
+    .slot-pill.relay { border-color: rgba(245, 158, 11, 0.5); color: #fde68a; background: rgba(245, 158, 11, 0.12); }
+    #fps-badge {
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      min-width: 48px;
+      text-align: right;
+    }
+
+    /* Main Stage */
+    #stage {
+      position: fixed;
+      top: 42px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, #111626 0%, #07090f 100%);
+      transition: top 0.18s ease;
+    }
+    body.bar-hidden #stage { top: 0; }
+
+    #canvas {
+      max-width: 100%;
+      max-height: 100%;
+      aspect-ratio: 4 / 3;
+      width: auto;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+      outline: none;
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.75);
+    }
+
+    /* Boot Overlay */
+    #boot-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: radial-gradient(circle at 50% 35%, #17203a 0%, #090b12 75%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #boot-overlay.hidden { display: none; }
+    .boot-card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      text-align: center;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+    }
+    .boot-card h1 { font-size: 20px; color: var(--accent); margin-bottom: 6px; }
+    .boot-card p { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+    .progress-track {
+      height: 7px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 4%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width 0.15s ease;
+    }
+    #boot-detail { font-size: 12px; color: var(--muted); }
+
+    /* Minimalist Modal Drawer (Rooms / Controls) */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      background: rgba(4, 6, 12, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(4px);
+    }
+    .modal-backdrop.hidden { display: none; }
+    .modal {
+      width: 100%;
+      max-width: 480px;
+      max-height: 85vh;
+      overflow-y: auto;
+      background: #101524;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+    }
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .modal-head h2 { font-size: 15px; color: var(--accent); }
+    .field-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+    }
+    .input:focus { border-color: var(--accent-2); }
+
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin: 14px 0 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .room-list { display: flex; flex-direction: column; gap: 6px; }
+    .room-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    .room-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .empty-msg { font-size: 12px; color: var(--muted); padding: 12px 0; text-align: center; }
+
+    .binds-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .bind-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .bind-key {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--accent);
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .hint {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-top: 10px;
+    }
+
+    /* Sync progress pill */
+    #sync-banner {
+      position: fixed;
+      top: 56px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 45;
+      background: rgba(15, 23, 42, 0.94);
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      border-radius: 10px;
+      padding: 10px 16px;
+      min-width: 280px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    #sync-banner.hidden { display: none; }
+    #sync-banner-text { font-size: 12px; font-weight: 600; color: #e0f2fe; text-align: center; }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 60;
+      white-space: nowrap;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <header id="topbar">
+    <div class="bar-group">
+      <div class="brand">⭐ MARIO PARTY 3 <span>N64 ONLINE</span></div>
+      <button id="btn-rooms" class="btn primary" title="Find, host, or join 1–4P rooms (F2)">🌐 Rooms</button>
+      <button id="btn-invite" class="btn hidden" title="Copy room invite link">🔗 Copy Link</button>
+      <button id="btn-sync" class="btn hidden" title="Push Host N64 state to all players">🔄 Sync Now</button>
+      <button id="btn-leave" class="btn hidden" title="Leave online room">🚪 Leave</button>
+    </div>
+    <div class="bar-group">
+      <div id="slot-strip"></div>
+      <span id="fps-badge">-- FPS</span>
+      <button id="btn-controls" class="btn" title="Keyboard & Gamepad controls">🎮 Controls</button>
+      <button id="btn-mute" class="btn" title="Mute / Unmute audio">🔊</button>
+      <button id="btn-full" class="btn" title="Fullscreen (F11)">⛶</button>
+    </div>
+  </header>
+
+  <main id="stage">
+    <canvas id="canvas" width="640" height="480" tabindex="0"></canvas>
+  </main>
+
+  <div id="boot-overlay">
+    <div class="boot-card">
+      <h1 id="boot-title">Mario Party 3 Web</h1>
+      <p id="boot-sub">Loading N64 WebAssembly Runtime &amp; ROM...</p>
+      <div class="progress-track"><div id="boot-bar" class="progress-fill"></div></div>
+      <div id="boot-detail">Checking IndexedDB cache...</div>
+    </div>
+  </div>
+
+  <!-- Minimalist Rooms Modal (F2) -->
+  <div id="rooms-modal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <h2>🌐 Online Party Rooms (1–4P)</h2>
+        <button class="btn" data-close="rooms-modal">✕</button>
+      </div>
+      <div class="field-row">
+        <input id="input-room-name" class="input" placeholder="Room name (optional)" maxlength="36" />
+        <button id="btn-host-new" class="btn primary">➕ Host Room</button>
+      </div>
+      <div class="field-row">
+        <input id="input-room-code" class="input" placeholder="Room code (e.g. STAR42)" maxlength="16" style="text-transform: uppercase" />
+        <button id="btn-join-code" class="btn">Join Code</button>
+      </div>
+
+      <div class="section-title">
+        <span>Active Rooms</span>
+        <button id="btn-refresh-rooms" class="btn" style="padding: 2px 8px; font-size: 11px;">↻ Refresh</button>
+      </div>
+      <div id="room-list" class="room-list">
+        <div class="empty-msg">Loading rooms...</div>
+      </div>
+
+      <div class="section-title">
+        <span>Lockstep Tuning</span>
+      </div>
+      <div class="field-row" style="align-items: center; margin-bottom: 4px;">
+        <label for="select-delay" style="font-size: 12px; color: var(--muted);">Input Delay:</label>
+        <select id="select-delay" class="input" style="max-width: 190px;">
+          <option value="2">2 frames (33 ms · LAN/Nearby)</option>
+          <option value="3" selected>3 frames (50 ms · Default)</option>
+          <option value="4">4 frames (67 ms · Cross-Region)</option>
+          <option value="5">5 frames (83 ms · High Ping)</option>
+          <option value="6">6 frames (100 ms · Very High Ping)</option>
+        </select>
+        <select id="select-core" class="input" style="max-width: 170px;" title="N64 WebGL2 core">
+          <option value="mupen64plus_next">Mupen64Plus-Next</option>
+          <option value="parallel_n64">ParaLLEl N64</option>
+        </select>
+      </div>
+      <p class="hint">
+        Tip: Use Mario Party 3's built-in menus (and Pause → Controller Settings) to assign P1–P4 between Human &amp; COM. Direct WebRTC P2P is used automatically, with CGNAT-proof Cloudflare relay fallback per peer.
+      </p>
+    </div>
+  </div>
+
+  <!-- Controls Modal -->
+  <div id="controls-modal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <h2>🎮 N64 Controls &amp; Gamepad</h2>
+        <button class="btn" data-close="controls-modal">✕</button>
+      </div>
+      <div id="gamepad-status" class="hint" style="margin-top: 0; margin-bottom: 10px;">
+        Gamepads detected: 0 (Xbox / PlayStation / Switch / N64 USB supported plug-and-play)
+      </div>
+      <div id="binds-grid" class="binds-grid"></div>
+      <div class="field-row" style="margin-top: 12px; margin-bottom: 0; justify-content: space-between;">
+        <button id="btn-reset-binds" class="btn">↺ Reset Defaults</button>
+        <span class="hint" style="margin: 0;">Press <strong>F2</strong> to toggle Rooms · <strong>F9</strong> to hide bar</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="sync-banner" class="hidden">
+    <div id="sync-banner-text">Syncing N64 state...</div>
+    <div class="progress-track" style="margin-bottom: 0;"><div id="sync-banner-bar" class="progress-fill"></div></div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="relay_config.js"></script>
+  <script src="mp3_input.js"></script>
+  <script src="mp3_net.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      const DB_NAME = "marioparty3web-cache-v1";
+      const DB_STORE = "blobs";
+      const SAVE_KEY = "mp3.srm.v1";
+
+      const params = new URLSearchParams(window.location.search);
+      const validCores = new Set(["mupen64plus_next", "parallel_n64"]);
+      let selectedCore =
+        (params.get("core") && validCores.has(params.get("core")) && params.get("core")) ||
+        localStorage.getItem("mp3web-core") ||
+        (window.MP3_RELAY_CONFIG && window.MP3_RELAY_CONFIG.defaultCore) ||
+        "mupen64plus_next";
+
+      const elBootOverlay = document.getElementById("boot-overlay");
+      const elBootTitle = document.getElementById("boot-title");
+      const elBootSub = document.getElementById("boot-sub");
+      const elBootBar = document.getElementById("boot-bar");
+      const elBootDetail = document.getElementById("boot-detail");
+      const elSlotStrip = document.getElementById("slot-strip");
+      const elFpsBadge = document.getElementById("fps-badge");
+      const elSyncBanner = document.getElementById("sync-banner");
+      const elSyncBannerText = document.getElementById("sync-banner-text");
+      const elSyncBannerBar = document.getElementById("sync-banner-bar");
+      const elToast = document.getElementById("toast");
+
+      const btnRooms = document.getElementById("btn-rooms");
+      const btnInvite = document.getElementById("btn-invite");
+      const btnSync = document.getElementById("btn-sync");
+      const btnLeave = document.getElementById("btn-leave");
+      const btnControls = document.getElementById("btn-controls");
+      const btnMute = document.getElementById("btn-mute");
+      const btnFull = document.getElementById("btn-full");
+      const selectDelay = document.getElementById("select-delay");
+      const selectCore = document.getElementById("select-core");
+      selectCore.value = selectedCore;
+
+      let activeModule = null;
+      let fnSimulateInput = null;
+      let fnSaveStateInfo = null;
+      let fnLoadState = null;
+      let fnGetFrameCount = null;
+      let fnSaveFilePath = null;
+      let fnCmdSaveFiles = null;
+      let emulatorReady = false;
+      let audioMuted = false;
+      let toastTimer = null;
+      let lastSavedSrmHash = "";
+
+      // FPS counter
+      let fpsFrames = 0;
+      let fpsLastMs = performance.now();
+
+      function showToast(msg, ms = 2600) {
+        elToast.textContent = msg;
+        elToast.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => elToast.classList.remove("show"), ms);
+      }
+
+      function setBoot(title, sub, pct, detail) {
+        if (title) elBootTitle.textContent = title;
+        if (sub) elBootSub.textContent = sub;
+        if (pct !== null && pct !== undefined) elBootBar.style.width = `${Math.max(3, Math.min(100, pct))}%`;
+        if (detail) elBootDetail.textContent = detail;
+      }
+
+      function getRelayBaseUrl() {
+        const cfg = (window.MP3_RELAY_CONFIG && window.MP3_RELAY_CONFIG.relayUrl) || "";
+        return (cfg || window.location.origin).replace(/\/+$/, "");
+      }
+
+      // IndexedDB helper for caching ROM, WASM core & EEPROM saves
+      function openDb() {
+        return new Promise((resolve, reject) => {
+          const req = indexedDB.open(DB_NAME, 1);
+          req.onupgradeneeded = () => {
+            if (!req.result.objectStoreNames.contains(DB_STORE)) {
+              req.result.createObjectStore(DB_STORE);
+            }
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      async function idbGet(key) {
+        try {
+          const db = await openDb();
+          return await new Promise((resolve) => {
+            const tx = db.transaction(DB_STORE, "readonly");
+            const req = tx.objectStore(DB_STORE).get(key);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+          });
+        } catch (_) {
+          return null;
+        }
+      }
+
+      async function idbSet(key, val) {
+        try {
+          const db = await openDb();
+          await new Promise((resolve) => {
+            const tx = db.transaction(DB_STORE, "readwrite");
+            tx.objectStore(DB_STORE).put(val, key);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => resolve();
+          });
+        } catch (_) {}
+      }
+
+      async function gunzipBytes(u8) {
+        const ds = new DecompressionStream("gzip");
+        const writer = ds.writable.getWriter();
+        writer.write(u8);
+        writer.close();
+        const res = new Response(ds.readable);
+        return new Uint8Array(await res.arrayBuffer());
+      }
+
+      async function fetchBytesWithProgress(url, onProg) {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status} loading ${url}`);
+        const total = Number(res.headers.get("Content-Length") || 0);
+        if (!res.body || !total) {
+          const buf = new Uint8Array(await res.arrayBuffer());
+          onProg?.(buf.byteLength, buf.byteLength);
+          return buf;
+        }
+        const reader = res.body.getReader();
+        const parts = [];
+        let loaded = 0;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          parts.push(value);
+          loaded += value.byteLength;
+          onProg?.(loaded, total);
+        }
+        const out = new Uint8Array(loaded);
+        let off = 0;
+        for (const p of parts) {
+          out.set(p, off);
+          off += p.byteLength;
+        }
+        return out;
+      }
+
+      function loadScriptOnce(src) {
+        return new Promise((resolve, reject) => {
+          const s = document.createElement("script");
+          s.src = src;
+          s.onload = () => resolve();
+          s.onerror = () => reject(new Error(`Failed to load ${src}`));
+          document.head.appendChild(s);
+        });
+      }
+
+      async function loadRomBytes() {
+        const manifest = await (await fetch("roms/roms.manifest.json")).json();
+        const cacheKey = `rom:${manifest.rawCrc32}`;
+        const cached = await idbGet(cacheKey);
+        if (cached && cached.byteLength === manifest.rawSize) {
+          setBoot(null, null, 60, "Loaded Mario Party 3 ROM from IndexedDB cache.");
+          return new Uint8Array(cached);
+        }
+
+        const totalBytes = manifest.compressedSize;
+        const merged = new Uint8Array(totalBytes);
+        let offset = 0;
+        for (let i = 0; i < manifest.chunks.length; i++) {
+          const ch = manifest.chunks[i];
+          const partStart = offset;
+          const bytes = await fetchBytesWithProgress(ch.url, (loaded) => {
+            const pct = 15 + ((partStart + loaded) / totalBytes) * 55;
+            setBoot(
+              null,
+              null,
+              pct,
+              `Downloading ROM chunk ${i + 1}/${manifest.chunks.length} (${((partStart + loaded) / 1048576).toFixed(1)} / ${(totalBytes / 1048576).toFixed(1)} MiB)...`
+            );
+          });
+          merged.set(bytes, offset);
+          offset += bytes.byteLength;
+        }
+
+        setBoot(null, null, 74, "Decompressing Mario Party 3 (USA) ROM...");
+        const rawRom = await gunzipBytes(merged);
+        await idbSet(cacheKey, rawRom);
+        return rawRom;
+      }
+
+      async function loadCoreWasm(coreName) {
+        const coresManifest = await (await fetch("cores/cores.manifest.json")).json();
+        const meta = coresManifest[coreName];
+        if (!meta) throw new Error(`Core '${coreName}' not found in cores.manifest.json`);
+
+        setBoot(null, null, 78, `Loading ${coreName} JS runtime...`);
+        window.EJS_Runtime = undefined;
+        await loadScriptOnce(meta.js);
+
+        const cacheKey = `wasm:${coreName}:${meta.rawCrc32}`;
+        const cached = await idbGet(cacheKey);
+        if (cached && cached.byteLength === meta.rawSize) {
+          setBoot(null, null, 88, `Loaded ${coreName} WASM from cache.`);
+          return new Uint8Array(cached);
+        }
+
+        const gz = await fetchBytesWithProgress(meta.wasmBin, (loaded, total) => {
+          const pct = 80 + (loaded / Math.max(1, total)) * 8;
+          setBoot(null, null, pct, `Downloading ${coreName} WASM core...`);
+        });
+        const wasm = await gunzipBytes(gz);
+        await idbSet(cacheKey, wasm);
+        return wasm;
+      }
+
+      // Input & Network instances
+      const inputMgr = window.MP3Input.createInputManager();
+
+      function captureRawSaveState() {
+        if (!fnSaveStateInfo || !activeModule) return null;
+        const infoStr = fnSaveStateInfo();
+        const parts = String(infoStr || "").split("|");
+        if (parts[2] !== "1") return null;
+        const size = Number.parseInt(parts[0], 10);
+        const ptr = Number.parseInt(parts[1], 10);
+        if (!size || !ptr) return null;
+        return new Uint8Array(activeModule.HEAPU8.buffer.slice(ptr, ptr + size));
+      }
+
+      function loadRawSaveStateAndFlush(rawBytes) {
+        if (!activeModule || !fnLoadState) return false;
+        inputMgr.resetAllPorts(fnSimulateInput);
+        activeModule.FS.writeFile("/mp3_sync.state", rawBytes);
+        fnLoadState("/mp3_sync.state", 0);
+        if (activeModule.callUserCallback && activeModule.MainLoop && activeModule.MainLoop.func) {
+          activeModule.callUserCallback(activeModule.MainLoop.func);
+        }
+        return true;
+      }
+
+      function persistEepromIfChanged() {
+        if (!emulatorReady || !activeModule || !fnSaveFilePath) return;
+        try {
+          fnCmdSaveFiles?.();
+          const p = fnSaveFilePath();
+          if (!p) return;
+          const data = activeModule.FS.readFile(p);
+          if (!data || data.byteLength === 0) return;
+          let h = 2166136261;
+          for (let i = 0; i < data.byteLength; i++) {
+            h = Math.imul(h ^ data[i], 16777619) >>> 0;
+          }
+          const sig = `${data.byteLength}:${h}`;
+          if (sig !== lastSavedSrmHash) {
+            lastSavedSrmHash = sig;
+            idbSet(SAVE_KEY, new Uint8Array(data));
+          }
+        } catch (_) {}
+      }
+
+      const netEngine = window.MP3Net.createNetEngine({
+        getRelayBaseUrl,
+        getCoreName: () => selectedCore,
+        isEmulatorReady: () => emulatorReady,
+        captureSaveState: captureRawSaveState,
+        loadSaveState: loadRawSaveStateAndFlush,
+        sampleLocalInput: (padIdx, useKb) => inputMgr.sampleLocalPlayer(padIdx, useKb),
+        applyPortInput: (port, packed) => inputMgr.applyPackedToPort(fnSimulateInput, port, packed),
+        resetAllPorts: () => inputMgr.resetAllPorts(fnSimulateInput),
+        stepOneFrame: () => {
+          if (activeModule?.callUserCallback && activeModule?.MainLoop?.func) {
+            activeModule.callUserCallback(activeModule.MainLoop.func);
+          }
+        },
+        getCoreFrameCount: () => (fnGetFrameCount ? fnGetFrameCount() : 0),
+        onSyncProgress: (text, pct) => {
+          if (!text) {
+            elSyncBanner.classList.add("hidden");
+            return;
+          }
+          elSyncBannerText.textContent = text;
+          elSyncBannerBar.style.width = `${Math.max(4, Math.min(100, pct || 0))}%`;
+          elSyncBanner.classList.remove("hidden");
+        },
+        onToast: showToast,
+        onCoreMismatch: (hostCore) => {
+          if (validCores.has(hostCore) && hostCore !== selectedCore) {
+            showToast(`Switching core to ${hostCore} to match Host...`, 3500);
+            localStorage.setItem("mp3web-core", hostCore);
+            const u = new URL(window.location.href);
+            u.searchParams.set("core", hostCore);
+            window.location.replace(u.toString());
+          }
+        },
+        onStatusChange: renderNetStatus,
+      });
+
+      function renderNetStatus(st) {
+        const inRoom = st.mode !== "solo";
+        btnInvite.classList.toggle("hidden", !inRoom);
+        btnLeave.classList.toggle("hidden", !inRoom);
+        btnSync.classList.toggle("hidden", st.mode !== "host" || st.activeSlots.length < 2);
+        btnSync.classList.toggle("warn", Boolean(st.driftWarning));
+        btnSync.textContent = st.driftWarning ? "⚠️ Resync Now" : "🔄 Sync Now";
+
+        elSlotStrip.innerHTML = "";
+        if (!inRoom) {
+          const pill = document.createElement("span");
+          pill.className = "slot-pill";
+          pill.textContent = "SOLO / LOCAL";
+          elSlotStrip.appendChild(pill);
+          return;
+        }
+
+        for (let s = 1; s <= 4; s++) {
+          const occupied = st.activeSlots.includes(s);
+          if (!occupied) continue;
+          const pill = document.createElement("span");
+          pill.className = "slot-pill";
+          let label = `P${s}`;
+          if (s === st.mySlot) {
+            pill.classList.add("me");
+            label += st.mode === "host" ? " HOST" : " YOU";
+          } else {
+            const tr = st.peers[s] || (st.mode === "guest" && s === 1 ? st.peers[1] : null);
+            if (tr === "p2p") {
+              pill.classList.add("p2p");
+              label += " P2P";
+            } else if (tr === "relay") {
+              pill.classList.add("relay");
+              label += " RELAY";
+            }
+          }
+          pill.textContent = label;
+          elSlotStrip.appendChild(pill);
+        }
+      }
+
+      function onPreMainLoop() {
+        const allowStep = netEngine.onPreMainLoop();
+        if (allowStep) {
+          fpsFrames++;
+          const now = performance.now();
+          if (now - fpsLastMs >= 1000) {
+            const fps = Math.round((fpsFrames * 1000) / (now - fpsLastMs));
+            elFpsBadge.textContent = `${fps} FPS`;
+            fpsFrames = 0;
+            fpsLastMs = now;
+          }
+        }
+        return allowStep;
+      }
+
+      function syncAudioGain() {
+        try {
+          const ctx = activeModule?.AL?.currentCtx;
+          if (ctx?.gain?.gain) ctx.gain.gain.value = audioMuted ? 0 : 1;
+          if (ctx?.audioCtx?.state === "suspended") ctx.audioCtx.resume().catch(() => {});
+        } catch (_) {}
+      }
+
+      async function bootEmulator() {
+        try {
+          setBoot("Mario Party 3 Web", `Engine: ${selectedCore} (WebGL2)`, 8, "Reading ROM manifest...");
+          const romBytes = await loadRomBytes();
+          const wasmBytes = await loadCoreWasm(selectedCore);
+
+          setBoot(null, null, 92, "Initializing N64 Libretro WebGL2 runtime...");
+          const canvasEl = document.getElementById("canvas");
+          const savedSrm = await idbGet(SAVE_KEY);
+
+          const mod = await window.EJS_Runtime({
+            wasmBinary: wasmBytes.buffer.slice(
+              wasmBytes.byteOffset,
+              wasmBytes.byteOffset + wasmBytes.byteLength
+            ),
+            canvas: canvasEl,
+            parent: canvasEl.parentElement || document.body,
+            noInitialRun: true,
+            preMainLoop: onPreMainLoop,
+            getSavExt: () => ".srm",
+            callbacks: {
+              setupCoreSettingFile: () => {},
+            },
+            print: () => {},
+            printErr: () => {},
+          });
+
+          activeModule = mod;
+          const FS = mod.FS;
+          const dirs = [
+            "/home",
+            "/home/web_user",
+            "/home/web_user/.config",
+            "/home/web_user/.config/retroarch",
+            "/home/web_user/retroarch",
+            "/home/web_user/retroarch/userdata",
+            "/home/web_user/retroarch/userdata/config",
+            "/home/web_user/retroarch/userdata/saves",
+            "/home/web_user/retroarch/userdata/system",
+          ];
+          for (const d of dirs) {
+            try { FS.mkdir(d); } catch (_) {}
+          }
+
+          // Deterministic RetroArch & N64 core options (identical across all 4 clients!)
+          const retroCfg = [
+            'savestate_file_compression = "false"',
+            'notification_show_save_state = "false"',
+            'notification_show_cheats_applied = "false"',
+            'notification_show_patch_applied = "false"',
+            'notification_show_config_override_load = "false"',
+            'notification_show_remap_load = "false"',
+            'video_vsync = "true"',
+            'audio_latency = "64"',
+            'input_max_users = "4"',
+            'savefile_directory = "/home/web_user/retroarch/userdata/saves"',
+            "",
+          ].join("\n");
+          FS.writeFile("/home/web_user/.config/retroarch/retroarch.cfg", retroCfg);
+
+          const coreOpts = [
+            'mupen64plus-cpucore = "cached_interpreter"',
+            'mupen64plus-43screensize = "640x480"',
+            'mupen64plus-aspect = "4:3"',
+            'mupen64plus-BilinearMode = "standard"',
+            'mupen64plus-EnableFBEmulation = "True"',
+            'mupen64plus-EnableCopyColorToRDRAM = "Sync"',
+            'mupen64plus-EnableCopyDepthToRDRAM = "Software"',
+            'mupen64plus-ThreadedRenderer = "False"',
+            'mupen64plus-pak1 = "memory"',
+            'mupen64plus-pak2 = "memory"',
+            'mupen64plus-pak3 = "memory"',
+            'mupen64plus-pak4 = "memory"',
+            'mupen64plus-alt-map = "False"',
+            'parallel-n64-cpucore = "cached_interpreter"',
+            'parallel-n64-gfxplugin = "glide64"',
+            'parallel-n64-gfxplugin-accuracy = "medium"',
+            'parallel-n64-screensize = "640x480"',
+            'parallel-n64-aspectratiohint = "normal"',
+            'parallel-n64-framerate = "original"',
+            'parallel-n64-pak1 = "memory"',
+            'parallel-n64-pak2 = "memory"',
+            'parallel-n64-pak3 = "memory"',
+            'parallel-n64-pak4 = "memory"',
+            "",
+          ].join("\n");
+          FS.writeFile("/home/web_user/retroarch/userdata/config/retroarch-core-options.cfg", coreOpts);
+          FS.writeFile("/home/web_user/.config/retroarch/retroarch-core-options.cfg", coreOpts);
+
+          if (savedSrm && savedSrm.byteLength > 0) {
+            FS.writeFile("/home/web_user/retroarch/userdata/saves/mp3.srm", new Uint8Array(savedSrm));
+          }
+          FS.writeFile("/mp3.z64", romBytes);
+
+          setBoot(null, null, 98, "Booting Mario Party 3...");
+          mod.callMain(["/mp3.z64"]);
+          mod.resumeMainLoop();
+
+          // Route 100% of inputs deterministically through simulate_input
+          mod._ejs_set_keyboard_enabled?.(0);
+
+          fnSimulateInput = mod.cwrap("simulate_input", "null", ["number", "number", "number"]);
+          fnSaveStateInfo = mod.cwrap("save_state_info", "string", []);
+          fnLoadState = mod.cwrap("load_state", "number", ["string", "number"]);
+          fnGetFrameCount = mod.cwrap("get_current_frame_count", "number", []);
+          fnSaveFilePath = mod.cwrap("save_file_path", "string", []);
+          fnCmdSaveFiles = mod.cwrap("cmd_savefiles", "null", []);
+
+          inputMgr.resetAllPorts(fnSimulateInput);
+          emulatorReady = true;
+          syncAudioGain();
+
+          // Expose debug hook for automated verification
+          window.__mp3Debug = {
+            core: selectedCore,
+            getFrameCount: () => (fnGetFrameCount ? fnGetFrameCount() : 0),
+            getCoreOptions: () => {
+              try {
+                return mod.cwrap("get_core_options", "string", [])();
+              } catch (_) {
+                return "";
+              }
+            },
+            testSaveState: async () => {
+              const raw = captureRawSaveState();
+              if (!raw) return { ok: false };
+              const cs = new CompressionStream("gzip");
+              const w = cs.writable.getWriter();
+              w.write(raw);
+              w.close();
+              const gz = new Uint8Array(await new Response(cs.readable).arrayBuffer());
+              return { ok: true, rawBytes: raw.byteLength, gzBytes: gz.byteLength };
+            },
+            getNetStatus: () => netEngine.getStatus(),
+            inputMgr,
+            netEngine,
+          };
+
+          elBootOverlay.classList.add("hidden");
+          canvasEl.focus();
+
+          // Auto-join room from URL (?room=XXXX)
+          const initialRoom = params.get("room");
+          if (initialRoom) {
+            netEngine.connectToRoom(initialRoom);
+          } else {
+            netEngine.notifyEmulatorBooted();
+          }
+
+          setInterval(persistEepromIfChanged, 10000);
+        } catch (err) {
+          console.error("[MP3Web] Boot failed:", err);
+          setBoot("Boot Error", err.message || String(err), 100, "Try refreshing or switching core (?core=parallel_n64).");
+        }
+      }
+
+      // =========================================================================
+      // Minimalist UI Wiring (Rooms & Controls Drawers)
+      // =========================================================================
+      function openModal(id) {
+        document.getElementById(id).classList.remove("hidden");
+        if (id === "rooms-modal") refreshRoomList();
+        if (id === "controls-modal") renderControlsModal();
+      }
+      function closeModal(id) {
+        inputMgr.cancelCapture();
+        document.getElementById(id).classList.add("hidden");
+        document.getElementById("canvas").focus();
+      }
+
+      document.querySelectorAll("[data-close]").forEach((btn) => {
+        btn.addEventListener("click", () => closeModal(btn.dataset.close));
+      });
+      document.querySelectorAll(".modal-backdrop").forEach((bg) => {
+        bg.addEventListener("click", (e) => {
+          if (e.target === bg) closeModal(bg.id);
+        });
+      });
+
+      async function refreshRoomList() {
+        const listEl = document.getElementById("room-list");
+        listEl.innerHTML = `<div class="empty-msg">Refreshing rooms...</div>`;
+        try {
+          const res = await fetch(`${getRelayBaseUrl()}/api/rooms`, { cache: "no-store" });
+          const data = await res.json();
+          const rooms = data.rooms || [];
+          if (rooms.length === 0) {
+            listEl.innerHTML = `<div class="empty-msg">No active rooms yet — click <strong>Host Room</strong> above to start a party!</div>`;
+            return;
+          }
+          listEl.innerHTML = "";
+          for (const r of rooms) {
+            const row = document.createElement("div");
+            row.className = "room-item";
+            const full = r.playerCount >= r.maxPlayers;
+            row.innerHTML = `
+              <div>
+                <div><strong>${escapeHtml(r.name)}</strong> <span style="color:var(--muted);font-size:11px;">#${escapeHtml(r.id)}</span></div>
+                <div class="room-meta">${r.playerCount}/${r.maxPlayers} players · ${escapeHtml(r.core || selectedCore)}</div>
+              </div>
+              <button class="btn ${full ? "" : "primary"}" ${full ? "disabled" : ""}>${full ? "Full" : "Join"}</button>
+            `;
+            if (!full) {
+              row.querySelector("button").addEventListener("click", () => {
+                joinRoomAndUpdateUrl(r.id);
+                closeModal("rooms-modal");
+              });
+            }
+            listEl.appendChild(row);
+          }
+        } catch (err) {
+          listEl.innerHTML = `<div class="empty-msg">Could not reach room server.</div>`;
+        }
+      }
+
+      function escapeHtml(str) {
+        return String(str || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function randomRoomCode() {
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let out = "STAR";
+        for (let i = 0; i < 3; i++) out += chars[Math.floor(Math.random() * chars.length)];
+        return out;
+      }
+
+      function joinRoomAndUpdateUrl(code, opts = {}) {
+        netEngine.connectToRoom(code, opts);
+        const u = new URL(window.location.href);
+        u.searchParams.set("room", code);
+        history.replaceState(null, "", u.toString());
+      }
+
+      btnRooms.addEventListener("click", () => openModal("rooms-modal"));
+      btnControls.addEventListener("click", () => openModal("controls-modal"));
+      document.getElementById("btn-refresh-rooms").addEventListener("click", refreshRoomList);
+
+      document.getElementById("btn-host-new").addEventListener("click", () => {
+        const code = randomRoomCode();
+        const name = document.getElementById("input-room-name").value.trim();
+        joinRoomAndUpdateUrl(code, { name, create: true });
+        closeModal("rooms-modal");
+        navigator.clipboard?.writeText(window.location.href).then(
+          () => showToast(`🔗 Hosting ${code} — invite link copied!`),
+          () => showToast(`🎉 Hosting room ${code}!`)
+        );
+      });
+
+      document.getElementById("btn-join-code").addEventListener("click", () => {
+        const code = document.getElementById("input-room-code").value.trim().toUpperCase();
+        if (!code) return;
+        joinRoomAndUpdateUrl(code);
+        closeModal("rooms-modal");
+      });
+
+      btnInvite.addEventListener("click", () => {
+        const st = netEngine.getStatus();
+        if (!st.roomId) return;
+        const u = new URL(window.location.href);
+        u.searchParams.set("room", st.roomId);
+        navigator.clipboard?.writeText(u.toString()).then(
+          () => showToast(`🔗 Copied invite link for room ${st.roomId}!`),
+          () => prompt("Copy room invite link:", u.toString())
+        );
+      });
+
+      btnSync.addEventListener("click", () => netEngine.hostBroadcastSaveState());
+
+      btnLeave.addEventListener("click", () => {
+        netEngine.disconnect();
+        const u = new URL(window.location.href);
+        u.searchParams.delete("room");
+        history.replaceState(null, "", u.toString());
+      });
+
+      selectDelay.addEventListener("change", () => {
+        netEngine.setInputDelay(Number(selectDelay.value));
+        showToast(`⏱️ Input delay set to ${selectDelay.value} frames`);
+      });
+
+      selectCore.addEventListener("change", () => {
+        const nextCore = selectCore.value;
+        if (nextCore === selectedCore) return;
+        localStorage.setItem("mp3web-core", nextCore);
+        const u = new URL(window.location.href);
+        u.searchParams.set("core", nextCore);
+        window.location.replace(u.toString());
+      });
+
+      btnMute.addEventListener("click", () => {
+        audioMuted = !audioMuted;
+        btnMute.textContent = audioMuted ? "🔇" : "🔊";
+        syncAudioGain();
+      });
+
+      btnFull.addEventListener("click", () => {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen?.().catch(() => {});
+        } else {
+          document.exitFullscreen?.().catch(() => {});
+        }
+      });
+
+      function renderControlsModal() {
+        const gpCount = inputMgr.getConnectedGamepadCount();
+        document.getElementById("gamepad-status").textContent =
+          `Gamepads detected: ${gpCount} (Xbox / PlayStation / Switch / N64 USB plug-and-play)`;
+        const grid = document.getElementById("binds-grid");
+        const binds = inputMgr.getBinds();
+        grid.innerHTML = "";
+        for (const [action, label] of inputMgr.BIND_LABELS) {
+          const row = document.createElement("div");
+          row.className = "bind-row";
+          row.innerHTML = `<span>${label}</span><button class="bind-key">${inputMgr.formatKeyCode(binds[action])}</button>`;
+          const keyBtn = row.querySelector("button");
+          keyBtn.addEventListener("click", () => {
+            keyBtn.textContent = "Press key...";
+            inputMgr.captureNextKey((code) => {
+              if (code) inputMgr.setBind(action, code);
+              renderControlsModal();
+            });
+          });
+          grid.appendChild(row);
+        }
+      }
+
+      document.getElementById("btn-reset-binds").addEventListener("click", () => {
+        inputMgr.resetBinds();
+        renderControlsModal();
+        showToast("↺ Keyboard controls reset to defaults");
+      });
+
+      // Global shortcuts (F2 Rooms, F9 Hide Top Bar, click to unlock Web Audio)
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "F2") {
+          e.preventDefault();
+          const modal = document.getElementById("rooms-modal");
+          if (modal.classList.contains("hidden")) openModal("rooms-modal");
+          else closeModal("rooms-modal");
+        } else if (e.code === "F9") {
+          e.preventDefault();
+          document.body.classList.toggle("bar-hidden");
+        }
+      });
+
+      window.addEventListener("pointerdown", syncAudioGain, { passive: true });
+      window.addEventListener("beforeunload", persistEepromIfChanged);
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") persistEepromIfChanged();
+      });
+
+      renderNetStatus(netEngine.getStatus());
+      bootEmulator();
+    })();
+  </script>
+</body>
+</html>

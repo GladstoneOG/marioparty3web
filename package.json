@@ -1,0 +1,13 @@
+{
+  "name": "marioparty3web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mario Party 3 (N64) Browser Port with 1-4P Online Multiplayer via WebRTC P2P & Cloudflare Durable Objects",
+  "scripts": {
+    "build:assets": "python tools/build_assets.py",
+    "dev": "node server.js",
+    "deploy": "npx wrangler deploy"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

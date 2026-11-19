@@ -1,0 +1,9 @@
+.cache/
+.wrangler/
+node_modules/
+__pycache__/
+*.pyc
+.dev.vars
+*.tmp
+.DS_Store
+Thumbs.db
